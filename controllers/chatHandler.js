@@ -6,64 +6,64 @@ const Message = require("../models/message").message;
 const ChatThread = require("../models/message").chatThread;
 const userHandler = {
   //messageDetails={ from: "",  to: "", text: "", }
-  sendMessageTest: async (req, res) => {
-    try {
-      // const io = require("../servers/socket-io").getConnection();
-      let { to, text } = { ...req.body };
-      let from = req.userData._id;
-      let sendToUser = await User.findById(to)
-        .select("email online socketId")
-        .lean();
-      let newMessage = {
-        from,
-        to,
-        text,
-        sentAt: new Date(),
-      };
-      let savedMessage = await new Message(newMessage).save();
+  // sendMessageTest: async (req, res) => {
+  //   try {
+  //     // const io = require("../servers/socket-io").getConnection();
+  //     let { to, text } = { ...req.body };
+  //     let from = req.userData._id;
+  //     let sendToUser = await User.findById(to)
+  //       .select("email online socketId")
+  //       .lean();
+  //     let newMessage = {
+  //       from,
+  //       to,
+  //       text,
+  //       sentAt: new Date(),
+  //     };
+  //     let savedMessage = await new Message(newMessage).save();
 
-      let thread = await ChatThread.findOne({
-        $or: [
-          {
-            $and: [
-              { participant1: mongoose.Types.ObjectId(from) },
-              { participant2: mongoose.Types.ObjectId(to) },
-            ],
-          },
-          {
-            $and: [
-              { participant1: mongoose.Types.ObjectId(to) },
-              { participant2: mongoose.Types.ObjectId(from) },
-            ],
-          },
-        ],
-      });
+  //     let thread = await ChatThread.findOne({
+  //       $or: [
+  //         {
+  //           $and: [
+  //             { participant1: mongoose.Types.ObjectId(from) },
+  //             { participant2: mongoose.Types.ObjectId(to) },
+  //           ],
+  //         },
+  //         {
+  //           $and: [
+  //             { participant1: mongoose.Types.ObjectId(to) },
+  //             { participant2: mongoose.Types.ObjectId(from) },
+  //           ],
+  //         },
+  //       ],
+  //     });
 
-      if (!thread) {
-        thread = await createNewChatThread(from, to, savedMessage._id);
-      } else {
-        let messages = [...thread.messageHistory];
-        messages.push(savedMessage._id);
-        thread.messageHistory = messages;
-        await thread.save();
-      }
-      // if (sendToUser.online) {
-      //   savedMessage.deliveredAt = new Date();
-      //   await savedMessage.save();
-      //   io.to(sendToUser.socketId).emit("newMessage", savedMessage,thread);
-      // }
-      // callback({
-      //   status: 200,
-      // });
-      return res.status(200).json({
-        message: "done",
-      });
-    } catch (e) {
-      // return callback({
-      //   status: 500,
-      // });
-    }
-  },
+  //     if (!thread) {
+  //       thread = await createNewChatThread(from, to, savedMessage._id);
+  //     } else {
+  //       let messages = [...thread.messageHistory];
+  //       messages.push(savedMessage._id);
+  //       thread.messageHistory = messages;
+  //       await thread.save();
+  //     }
+  //     // if (sendToUser.online) {
+  //     //   savedMessage.deliveredAt = new Date();
+  //     //   await savedMessage.save();
+  //     //   io.to(sendToUser.socketId).emit("newMessage", savedMessage,thread);
+  //     // }
+  //     // callback({
+  //     //   status: 200,
+  //     // });
+  //     return res.status(200).json({
+  //       message: "done",
+  //     });
+  //   } catch (e) {
+  //     // return callback({
+  //     //   status: 500,
+  //     // });
+  //   }
+  // },
   getLastSeen: async (socket, _id, callback) => {
     try {
       let user = await User.findById(_id).select("online lastSeen").lean();
@@ -121,10 +121,22 @@ const userHandler = {
       if (sendToUser.online) {
         savedMessage.deliveredAt = new Date();
         await savedMessage.save();
+        let name = socket.userData.user.name;
+        let senderName, senderPfp;
+        if (!name) {
+          let userFrom = await User.findById(socket.userData._id)
+            .select("name pfpLink")
+            .lean();
+          senderName = userFrom.name;
+          senderPfp = userFrom.pfpLink;
+        } else {
+          senderName = socket.userData.user.name;
+          senderPfp = socket.userData.user.pfpLink;
+        }
         io.to(sendToUser.socketId).emit("newMessage", savedMessage, {
           _id: from,
-          senderName: socket.userData.user.name,
-          senderPfp: socket.userData.user.pfpLink,
+          senderName,
+          senderPfp,
         });
       }
       callback({
